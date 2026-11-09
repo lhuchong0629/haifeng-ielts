@@ -1,0 +1,50 @@
+name: Publish Haifeng IELTS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: designfuchen/word-atlas
+          ref: 99c007673d38f02c418d8e4cd2e9ec90b5d40be5
+          path: upstream
+          sparse-checkout: public
+          persist-credentials: false
+      - name: Assemble static site
+        run: |
+          mv upstream/public site
+          unzip -oq site-overlay.zip -d site
+          test -s site/index.html
+          test -s site/brand/starry-night.webp
+          test -s site/atlas/audio/uk/solution.mp3
+          test "$(find site -type f | wc -l)" -eq 44993
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    needs: assemble
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publish.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: publish
